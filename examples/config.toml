@@ -3,9 +3,10 @@
 #
 # 注意: 以下の command はプレースホルダ変数 ({repo} {number} {title} {author}
 #       {url} {labels}) だけを使い、トークン等の秘密は含めていません。
-#       `review-pr` / `close-merged-review-tab` は各自の環境に置いた
-#       ヘルパースクリプト（PATH 上）を想定した例です。自分のスクリプト名に
-#       読み替えてください。Notifier.app のパスも環境に合わせて調整を。
+#       `review-pr` / `close-merged-review-tab` は PATH 上のヘルパースクリプト
+#       を想定した例です。実体の例と設置方法は examples/scripts/ を参照
+#       （README に依存関係とシンボリックリンク手順あり）。Notifier.app の
+#       パスも環境に合わせて調整を。
 
 # ポーリング間隔（秒）
 interval = 120
