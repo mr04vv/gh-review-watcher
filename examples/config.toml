@@ -1,5 +1,11 @@
 # gh-review-watcher 設定例
 # macOS + Zellij + Claude Code を使ったPRレビュー自動化
+#
+# 注意: 以下の command はプレースホルダ変数 ({repo} {number} {title} {author}
+#       {url} {labels}) だけを使い、トークン等の秘密は含めていません。
+#       `review-pr` / `close-merged-review-tab` は各自の環境に置いた
+#       ヘルパースクリプト（PATH 上）を想定した例です。自分のスクリプト名に
+#       読み替えてください。Notifier.app のパスも環境に合わせて調整を。
 
 # ポーリング間隔（秒）
 interval = 120
@@ -30,17 +36,18 @@ command = """echo '{labels}' | grep -q yolo || (zellij action new-tab --name 'Re
 
 # --- on_poll: 毎ポーリング ---
 
-# "yolo" ラベルがついたPRはClaude Codeで自動レビュー判定
+# "yolo" ラベルがついたPRはClaude Codeで自動レビュー判定。
+# 何が起きたか追えるよう各分岐をログに残している（CHECK→RUN/SKIP）。
 [[on_poll]]
 name = "yolo-review"
-command = """echo '{labels}' | grep -q yolo && claude --dangerously-skip-permissions -p '/yolo-review {number} {repo}'"""
+command = """echo '[YOLO-CHECK] {repo}#{number} labels=[{labels}]' >> /tmp/gh-review-watcher-hooks.log && (echo '{labels}' | grep -q yolo && echo '[YOLO-RUN] {repo}#{number}' >> /tmp/gh-review-watcher-hooks.log && claude --dangerously-skip-permissions -p '/yolo-review {number} {repo}' >> /tmp/gh-review-watcher-hooks.log 2>&1 || echo '[YOLO-SKIP] {repo}#{number}' >> /tmp/gh-review-watcher-hooks.log)"""
 
 # --- on_remove: PRがリストから消えた時（マージ・クローズ・レビュー解除等） ---
 
-# レビュータブを自動で閉じる
+# レビュータブを自動で閉じる（実行内容をログにも残す）
 [[on_remove]]
 name = "close-review-tab"
-command = "close-merged-review-tab '{number}' '{repo}'"
+command = "echo '[REMOVE] {repo}#{number}' >> /tmp/gh-review-watcher-hooks.log && close-merged-review-tab '{number}' '{repo}' >> /tmp/gh-review-watcher-hooks.log 2>&1"
 
 # --- on_select: Enter押下時 ---
 
