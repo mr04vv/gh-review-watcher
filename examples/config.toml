@@ -66,15 +66,20 @@ command = "gh pr update-branch {number} -R {repo} --rebase"
 
 [[actions]]
 name = "Approve"
-command = "gh pr review {number} -R {repo} --approve --body 'LGTM 👍'"
+command = "gh pr review {number} -R {repo} --approve --body 'LGTM 👍 (manual)'"
 
 [[actions]]
-name = "Request changes (CI)"
-command = "gh pr review {number} -R {repo} --request-changes --body 'CI を確認してください'"
+name = "Request changes"
+command = "gh pr review {number} -R {repo} --request-changes --body 'CI/変更点を確認してください'"
 
 [[actions]]
-name = "Open CI checks"
+name = "Open CI checks (web)"
 command = "gh pr checks {number} -R {repo} --web"
+
+# review-pr は examples/scripts/ のヘルパー（PATH に置く前提）
+[[actions]]
+name = "Re-review with Claude (new tab)"
+command = "zellij action new-tab --name 'Review: {repo}#{number}' --close-on-exit -- review-pr '{url}' '{number}' '{repo}'"
 
 [[actions]]
 name = "Copy URL"

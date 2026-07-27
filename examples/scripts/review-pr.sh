@@ -25,6 +25,27 @@ PR_CREATED=$(echo "$PR_META_JSON" | jq -r '.createdAt // "?"' | cut -d'T' -f1)
 PR_DRAFT_BADGE=""
 [ "$PR_DRAFT" = "true" ] && PR_DRAFT_BADGE=" [DRAFT]"
 
+# Step 0.5: CI (status checks) の状態を取得。
+# gh pr checks は「全て pass でない」と exit 1 を返すので、|| true で握りつぶして出力だけ拾う。
+CI_JSON=$(gh pr checks "$NUMBER" -R "$REPO" --json name,state,bucket 2>/dev/null) || true
+[ -z "${CI_JSON// }" ] && CI_JSON='[]'
+CI_FAILED=$(echo "$CI_JSON" | jq -r '[.[] | select(.bucket=="fail" or .bucket=="cancel")] | map(.name) | join(", ")')
+CI_PENDING_N=$(echo "$CI_JSON" | jq -r '[.[] | select(.bucket=="pending")] | length')
+CI_TOTAL=$(echo "$CI_JSON" | jq -r 'length')
+if [ -n "$CI_FAILED" ]; then
+  CI_STATUS="FAIL"
+  CI_LINE="⛔ FAIL — 失敗: ${CI_FAILED}"
+elif [ "${CI_PENDING_N:-0}" -gt 0 ]; then
+  CI_STATUS="PENDING"
+  CI_LINE="⏳ 実行中 (${CI_PENDING_N} 件 pending)"
+elif [ "${CI_TOTAL:-0}" -gt 0 ]; then
+  CI_STATUS="PASS"
+  CI_LINE="✅ 全て pass (${CI_TOTAL} checks)"
+else
+  CI_STATUS="NONE"
+  CI_LINE="— (status check なし)"
+fi
+
 # Step 1: claude -p でレビュー実行、結果を $REVIEW_RESULT に保存 (生データは後段の [c] でも使う)
 REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "/review ${URL}" 2>&1)
 
@@ -47,6 +68,7 @@ REFORMAT_PROMPT="以下は PR #${NUMBER} (${REPO}) に対するコードレビ�
 - 📊 Diff:    +${PR_ADD} / -${PR_DEL}  (${PR_FILES} files)
 - 🗓  Created: ${PR_CREATED}
 - 🧭 State:   ${PR_STATE}
+- 🚦 CI:      ${CI_LINE}
 - 🔗 URL:     ${URL}
 
 ────────────────────────────────────────────────────────────────────
@@ -82,7 +104,7 @@ REFORMAT_PROMPT="以下は PR #${NUMBER} (${REPO}) に対するコードレビ�
 
 == 厳格なルール ==
 
-- PR Info セクション (👤 Author / 🌿 Branch / 📊 Diff / 🗓 Created / 🧭 State / 🔗 URL) はテンプレートに記載された値をそのまま出力する。 値の改変・省略・追加禁止。
+- PR Info セクション (👤 Author / 🌿 Branch / 📊 Diff / 🗓 Created / 🧭 State / 🚦 CI / 🔗 URL) はテンプレートに記載された値をそのまま出力する。 値の改変・省略・追加禁止。
 - 元レビューに無い事実を追加しない。 再整形と要約のみ。
 - 各セクションの (N) は実件数を入れる (例: \"## ⛔ Blockers (2)\")。 0 なら (0)。
 - 元レビューが \"issues なし\" / \"No issues found\" 系なら Verdict=APPROVE。 Blockers/Suggestions/Notes は (0) で \"なし\"。
@@ -108,6 +130,35 @@ else
   echo "$FORMATTED_RESULT"
 fi
 echo ""
+
+# Step 2.5: CI が失敗しているなら自動で request-changes を送る。
+# gh-review-watcher 経由でタブが開くたびに走るので、既に自分の CHANGES_REQUESTED が
+# あれば再送しない (二重送信ガード)。
+if [ "$CI_STATUS" = "FAIL" ]; then
+  VIEWER=$(gh api user --jq '.login' 2>/dev/null || echo "")
+  ALREADY=$(gh pr view "$NUMBER" -R "$REPO" --json reviews --jq \
+    --arg u "$VIEWER" '[.reviews[]? | select(.author.login==$u and .state=="CHANGES_REQUESTED")] | length' 2>/dev/null || echo 0)
+  if [ "${ALREADY:-0}" -gt 0 ]; then
+    echo "🚦 CI 失敗中だが既に request-changes 済み。再送しません。"
+  else
+    FAIL_BULLETS=$(echo "$CI_FAILED" | tr ',' '\n' | sed 's/^ *//; s/^/- /')
+    if gh pr review "$NUMBER" -R "$REPO" --request-changes --body "$(cat <<EOF
+⛔ **CI が失敗しています。** マージ前に修正が必要です。
+
+**失敗している check:**
+${FAIL_BULLETS}
+
+CI が green になったら再度レビューします。
+
+🤖 Reviewed by Claude Code (gh-review-watcher)
+EOF
+)"; then
+      echo "⛔ CI 失敗のため request-changes を自動送信しました。"
+    else
+      echo "⚠️  request-changes の送信に失敗しました (権限/自分のPR等)。"
+    fi
+  fi
+fi
 
 # 分析完了後、このレビュータブにフォーカスを移動
 zellij action go-to-tab-name "Review: ${REPO}#${NUMBER}" 2>/dev/null || true

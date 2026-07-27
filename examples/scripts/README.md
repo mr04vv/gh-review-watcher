@@ -7,7 +7,7 @@
 
 | スクリプト | 呼ばれる hook | 役割 |
 |---|---|---|
-| `review-pr.sh` | `on_new_pr` (review-tab) | Zellij タブ内で PR をレビュー。`claude -p /review` で分析し、固定テンプレに整形して表示、`[a]pprove / [c]omment / [d]iscuss / [o]pen / [q]uit` を対話選択 |
+| `review-pr.sh` | `on_new_pr` (review-tab) | Zellij タブ内で PR をレビュー。**PR の CI 状態を取得してレポートに表示し、CI が失敗していれば自動で `request-changes` を送る**（二重送信ガード付き）。`claude -p /review` で分析し固定テンプレに整形して表示、`[a]pprove / [c]omment / [d]iscuss / [o]pen / [q]uit` を対話選択 |
 | `close-merged-review-tab.sh` | `on_remove` | マージ/クローズ等で消えた PR のレビュータブを Zellij から閉じる |
 
 ## 設置
