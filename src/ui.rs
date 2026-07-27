@@ -1,10 +1,10 @@
 use crate::app::App;
 use crate::github::PrKind;
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
+    widgets::{Block, Borders, Cell, Clear, List, ListItem, ListState, Paragraph, Row, Table, TableState},
     Frame,
 };
 
@@ -123,7 +123,54 @@ pub fn draw(f: &mut Frame, app: &App) {
         Span::styled("r", Style::default().fg(Color::Cyan)),
         Span::raw(":refresh "),
         Span::styled("Tab", Style::default().fg(Color::Cyan)),
-        Span::raw(":filter"),
+        Span::raw(":filter "),
+        Span::styled("a", Style::default().fg(Color::Cyan)),
+        Span::raw(":actions"),
     ]);
     f.render_widget(Paragraph::new(help), chunks[2]);
+
+    // Manual-action popup menu (opened with `a`).
+    if app.show_action_menu && !app.action_names.is_empty() {
+        let items: Vec<ListItem> = app
+            .action_names
+            .iter()
+            .map(|n| ListItem::new(n.clone()))
+            .collect();
+        // Size the popup to the content, centered.
+        let width = app
+            .action_names
+            .iter()
+            .map(|n| n.len())
+            .max()
+            .unwrap_or(10)
+            .clamp(12, 50) as u16
+            + 6;
+        let height = (app.action_names.len() as u16).min(15) + 2;
+        let area = centered_rect(width, height, f.area());
+        let list = List::new(items)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Actions (Enter:run  Esc:close) "),
+            )
+            .highlight_style(
+                Style::default()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .highlight_symbol("> ");
+        let mut state = ListState::default();
+        state.select(Some(app.action_selected));
+        f.render_widget(Clear, area); // clear the area behind the popup
+        f.render_stateful_widget(list, area, &mut state);
+    }
+}
+
+/// A rectangle of the given width/height centered within `area`.
+fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
+    let w = width.min(area.width);
+    let h = height.min(area.height);
+    let x = area.x + (area.width.saturating_sub(w)) / 2;
+    let y = area.y + (area.height.saturating_sub(h)) / 2;
+    Rect { x, y, width: w, height: h }
 }

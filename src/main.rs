@@ -28,6 +28,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new();
+    // Populate the manual-action menu labels from config.
+    app.action_names = cfg.actions.iter().map(|a| a.name.clone()).collect();
 
     // Start watcher
     let (tx, mut rx) = mpsc::unbounded_channel();
@@ -41,12 +43,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if crossterm::event::poll(std::time::Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
+                    // When the manual-action popup is open, keys drive the menu.
+                    if app.show_action_menu {
+                        match key.code {
+                            KeyCode::Char('j') | KeyCode::Down => app.action_menu_next(),
+                            KeyCode::Char('k') | KeyCode::Up => app.action_menu_prev(),
+                            KeyCode::Esc | KeyCode::Char('a') | KeyCode::Char('q') => {
+                                app.close_action_menu();
+                            }
+                            KeyCode::Enter => {
+                                let idx = app.action_selected;
+                                if let (Some(pr), Some(act)) = (app.selected_pr(), cfg.actions.get(idx)) {
+                                    action::run_command(&act.command, pr);
+                                }
+                                app.close_action_menu();
+                            }
+                            _ => {}
+                        }
+                        continue;
+                    }
                     match key.code {
                         KeyCode::Char('q') => {
                             app.should_quit = true;
                         }
                         KeyCode::Char('j') | KeyCode::Down => app.next(),
                         KeyCode::Char('k') | KeyCode::Up => app.previous(),
+                        KeyCode::Char('a') => app.open_action_menu(),
                         KeyCode::Enter => {
                             if let Some(pr) = app.selected_pr() {
                                 if let Some(ref on_select) = cfg.on_select {

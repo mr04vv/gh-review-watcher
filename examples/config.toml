@@ -50,8 +50,32 @@ command = """echo '[YOLO-CHECK] {repo}#{number} labels=[{labels}]' >> /tmp/gh-re
 name = "close-review-tab"
 command = "echo '[REMOVE] {repo}#{number}' >> /tmp/gh-review-watcher-hooks.log && close-merged-review-tab '{number}' '{repo}' >> /tmp/gh-review-watcher-hooks.log 2>&1"
 
-# --- on_select: Enter押下時 ---
+# --- on_select: Enter押下時（既定の1アクション） ---
 
 # ブラウザでPRを開く
 [on_select]
 command = "open {url}"
+
+# --- actions: `a` で開くメニューから選択実行（選択中PRに対して） ---
+# 複数定義でき、TUI で `a` → j/k で選び Enter で実行、Esc で閉じる。
+# command は他フックと同じ {repo}/{number}/{url}/{labels} 等が使える。
+
+[[actions]]
+name = "Rebase (update branch)"
+command = "gh pr update-branch {number} -R {repo} --rebase"
+
+[[actions]]
+name = "Approve"
+command = "gh pr review {number} -R {repo} --approve --body 'LGTM 👍'"
+
+[[actions]]
+name = "Request changes (CI)"
+command = "gh pr review {number} -R {repo} --request-changes --body 'CI を確認してください'"
+
+[[actions]]
+name = "Open CI checks"
+command = "gh pr checks {number} -R {repo} --web"
+
+[[actions]]
+name = "Copy URL"
+command = "printf %s {url} | pbcopy"

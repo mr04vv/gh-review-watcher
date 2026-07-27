@@ -34,6 +34,10 @@ pub struct App {
     pub should_quit: bool,
     pub refreshing: bool,
     pub filter: Filter,
+    /// Manual action popup menu state.
+    pub action_names: Vec<String>,
+    pub show_action_menu: bool,
+    pub action_selected: usize,
 }
 
 impl App {
@@ -46,6 +50,34 @@ impl App {
             should_quit: false,
             refreshing: false,
             filter: Filter::All,
+            action_names: Vec::new(),
+            show_action_menu: false,
+            action_selected: 0,
+        }
+    }
+
+    /// Open the manual action popup (no-op if there are no actions configured).
+    pub fn open_action_menu(&mut self) {
+        if !self.action_names.is_empty() {
+            self.show_action_menu = true;
+            self.action_selected = 0;
+        }
+    }
+
+    pub fn close_action_menu(&mut self) {
+        self.show_action_menu = false;
+    }
+
+    pub fn action_menu_next(&mut self) {
+        let len = self.action_names.len();
+        if len > 0 {
+            self.action_selected = (self.action_selected + 1).min(len - 1);
+        }
+    }
+
+    pub fn action_menu_prev(&mut self) {
+        if self.action_selected > 0 {
+            self.action_selected -= 1;
         }
     }
 

@@ -23,6 +23,12 @@ pub struct Config {
 
     #[serde(default)]
     pub on_select: Option<SelectCommand>,
+
+    /// Manual actions the user can pick from a popup menu (key `a`) and run
+    /// against the selected PR. Each has a display `name` and a `command`
+    /// (same `{repo}/{number}/{title}/{author}/{url}/{labels}` templating).
+    #[serde(default)]
+    pub actions: Vec<ActionCommand>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -48,6 +54,7 @@ impl Default for Config {
             on_poll: Vec::new(),
             on_remove: Vec::new(),
             on_select: None,
+            actions: Vec::new(),
         }
     }
 }
@@ -89,12 +96,13 @@ pub fn load_config() -> Config {
         match toml::from_str::<Config>(&content) {
             Ok(config) => {
                 log(&format!(
-                    "Config loaded: interval={}, on_new_pr={} hooks, on_poll={} hooks, on_remove={} hooks, on_select={}",
+                    "Config loaded: interval={}, on_new_pr={} hooks, on_poll={} hooks, on_remove={} hooks, on_select={}, actions={}",
                     config.interval,
                     config.on_new_pr.len(),
                     config.on_poll.len(),
                     config.on_remove.len(),
-                    config.on_select.is_some()
+                    config.on_select.is_some(),
+                    config.actions.len()
                 ));
                 config
             }

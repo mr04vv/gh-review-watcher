@@ -16,9 +16,12 @@ GitHub上で自分にレビュー依頼された / アサインされたPRをポ
 |------|-----------|
 | `q` | 終了 |
 | `j` / `k` | 上下移動 |
-| `Enter` | 選択PRのアクション実行 |
+| `Enter` | 選択PRのアクション実行 (`[on_select]`) |
+| `a` | 手動アクションメニューを開く (`[[actions]]`) |
 | `r` | 手動リフレッシュ |
 | `Tab` | フィルタ切り替え (All → 24h → 7d) |
+
+メニュー表示中: `j`/`k` で移動、`Enter` で実行、`Esc`/`a`/`q` で閉じる。
 
 ## 設定
 
@@ -47,6 +50,19 @@ command = """zellij action new-pane --floating --name "Review: {repo}#{number}" 
 # Enter押下時: ブラウザでPRを開く
 [on_select]
 command = "open {url}"
+
+# 手動アクション: `a` でメニューを開き、選択中PRに対して実行
+[[actions]]
+name = "Rebase"
+command = "gh pr update-branch {number} -R {repo} --rebase"
+
+[[actions]]
+name = "Approve"
+command = "gh pr review {number} -R {repo} --approve"
+
+[[actions]]
+name = "Copy URL"
+command = "printf %s {url} | pbcopy"
 ```
 
 ### フックの種類
@@ -56,7 +72,8 @@ command = "open {url}"
 | `[[on_new_pr]]` | 新規PR検出時 | 検出されたPR |
 | `[[on_poll]]` | 毎ポーリング | 追跡中の全PR |
 | `[[on_remove]]` | PRがリストから消えた時（マージ・クローズ・レビュー解除等） | 消えたPR |
-| `[on_select]` | Enter押下時 | 選択中のPR |
+| `[on_select]` | Enter押下時（既定の1アクション） | 選択中のPR |
+| `[[actions]]` | `a` で開くメニューから選択実行（複数可） | 選択中のPR |
 
 ### テンプレート変数
 
