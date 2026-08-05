@@ -29,7 +29,16 @@ fn log(msg: &str) {
 }
 
 pub fn run_command(command: &str, pr: &PullRequest) {
-    let expanded = expand_template(command, pr);
+    spawn_shell(expand_template(command, pr));
+}
+
+/// Runs a command verbatim, with no PR context and no template expansion.
+/// Used by hooks that fire outside of any PR (e.g. `on_start`).
+pub fn run_shell(command: &str) {
+    spawn_shell(command.to_string());
+}
+
+fn spawn_shell(expanded: String) {
     log(&format!("Running: {expanded}"));
     match Command::new("sh")
         .arg("-c")

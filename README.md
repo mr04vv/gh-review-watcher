@@ -69,6 +69,7 @@ command = "printf %s {url} | pbcopy"
 
 | フック | タイミング | 対象 |
 |--------|-----------|------|
+| `[[on_start]]` | 起動時に1回（初回ポーリング前） | なし（テンプレート変数は使えない） |
 | `[[on_new_pr]]` | 新規PR検出時 | 検出されたPR |
 | `[[on_poll]]` | 毎ポーリング | 追跡中の全PR |
 | `[[on_remove]]` | PRがリストから消えた時（マージ・クローズ・レビュー解除等） | 消えたPR |
@@ -86,9 +87,11 @@ command = "printf %s {url} | pbcopy"
 | `{url}` | PRのURL |
 | `{labels}` | PRのラベル（カンマ区切り） |
 
+`[[on_start]]` はPRの文脈を持たないため、テンプレート変数は展開されずコマンドがそのまま実行されます（環境変数は通常どおり使えます）。
+
 ### 設定例
 
-[examples/config.toml](examples/config.toml) に、macOS + Zellij + Claude Code を使ったPRレビュー自動化の設定例があります。
+[examples/config.toml](examples/config.toml) に、macOS + Zellij/herdr + Claude Code を使ったPRレビュー自動化の設定例があります。
 
 ## インストール
 

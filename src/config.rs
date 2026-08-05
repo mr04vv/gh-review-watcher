@@ -8,6 +8,11 @@ pub struct Config {
     #[serde(default = "default_interval")]
     pub interval: u64,
 
+    /// Runs once at startup, before the first poll. No PR context, so
+    /// template variables are not expanded (commands run verbatim).
+    #[serde(default)]
+    pub on_start: Vec<ActionCommand>,
+
     #[serde(default)]
     pub on_new_pr: Vec<ActionCommand>,
 
@@ -50,6 +55,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             interval: default_interval(),
+            on_start: Vec::new(),
             on_new_pr: Vec::new(),
             on_poll: Vec::new(),
             on_remove: Vec::new(),
@@ -89,6 +95,25 @@ fn log(msg: &str) {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_on_start_hooks() {
+        let cfg: Config = toml::from_str(
+            r#"
+            [[on_start]]
+            name = "rename"
+            command = "herdr workspace rename $HERDR_WORKSPACE_ID gh-review-watcher"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(cfg.on_start.len(), 1);
+        assert_eq!(cfg.on_start[0].name, "rename");
+    }
+}
+
 pub fn load_config() -> Config {
     let path = config_path();
     if path.exists() {
@@ -96,8 +121,9 @@ pub fn load_config() -> Config {
         match toml::from_str::<Config>(&content) {
             Ok(config) => {
                 log(&format!(
-                    "Config loaded: interval={}, on_new_pr={} hooks, on_poll={} hooks, on_remove={} hooks, on_select={}, actions={}",
+                    "Config loaded: interval={}, on_start={} hooks, on_new_pr={} hooks, on_poll={} hooks, on_remove={} hooks, on_select={}, actions={}",
                     config.interval,
+                    config.on_start.len(),
                     config.on_new_pr.len(),
                     config.on_poll.len(),
                     config.on_remove.len(),

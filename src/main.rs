@@ -21,6 +21,13 @@ use watcher::WatcherEvent;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = config::load_config();
 
+    // on_start hooks fire once, before the terminal takes over the screen.
+    // They run detached with stdout/stderr swallowed, so this cannot block
+    // or corrupt the TUI even if a hook is slow.
+    for hook in &cfg.on_start {
+        action::run_shell(&hook.command);
+    }
+
     // Setup terminal
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
