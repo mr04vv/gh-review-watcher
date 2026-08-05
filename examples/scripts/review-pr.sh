@@ -160,8 +160,16 @@ EOF
   fi
 fi
 
-# 分析完了後、このレビュータブにフォーカスを移動
-zellij action go-to-tab-name "Review: ${REPO}#${NUMBER}" 2>/dev/null || true
+# 分析完了後、このレビュータブにフォーカスを移動 (herdr / zellij を実行時判定)
+if [[ "${HERDR_ENV:-}" == "1" ]]; then
+  REVIEW_TAB_ID=$(herdr tab list 2>/dev/null \
+    | jq -r --arg name "Review: ${REPO}#${NUMBER}" \
+        '.result.tabs[] | select(.label == $name) | .tab_id' 2>/dev/null \
+    | head -1)
+  [[ -n "$REVIEW_TAB_ID" ]] && herdr tab focus "$REVIEW_TAB_ID" >/dev/null 2>&1 || true
+else
+  zellij action go-to-tab-name "Review: ${REPO}#${NUMBER}" 2>/dev/null || true
+fi
 
 # Step 2: 選択肢を提示
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

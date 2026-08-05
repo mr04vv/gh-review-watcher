@@ -1,15 +1,26 @@
 # gh-review-watcher 設定例
-# macOS + Zellij + Claude Code を使ったPRレビュー自動化
+# macOS + Zellij/herdr + Claude Code を使ったPRレビュー自動化
 #
 # 注意: 以下の command はプレースホルダ変数 ({repo} {number} {title} {author}
 #       {url} {labels}) だけを使い、トークン等の秘密は含めていません。
-#       `review-pr` / `close-merged-review-tab` は PATH 上のヘルパースクリプト
-#       を想定した例です。実体の例と設置方法は examples/scripts/ を参照
-#       （README に依存関係とシンボリックリンク手順あり）。Notifier.app の
-#       パスも環境に合わせて調整を。
+#       `open-review-tab` / `review-pr` / `close-merged-review-tab` は PATH 上の
+#       ヘルパースクリプトを想定した例です。実体の例と設置方法は
+#       examples/scripts/ を参照（README に依存関係とシンボリックリンク手順
+#       あり）。Notifier.app のパスも環境に合わせて調整を。
+#       タブ操作系のヘルパーは実行時に herdr / zellij を判定するので、
+#       どちらのマルチプレクサ内で watcher を動かしても同じ設定で機能する。
 
 # ポーリング間隔（秒）
 interval = 120
+
+# --- on_start: 起動時に1回 ---
+# PRの文脈が無いのでテンプレート変数は展開されない（コマンドはそのまま実行）。
+
+# herdr 内で起動したときはワークスペース名を watcher に合わせる
+[[on_start]]
+name = "rename-herdr-workspace"
+command = """[ "$HERDR_ENV" = "1" ] && [ -n "$HERDR_WORKSPACE_ID" ] \
+  && herdr workspace rename "$HERDR_WORKSPACE_ID" gh-review-watcher || true"""
 
 # --- on_new_pr: 新規PR検出時 ---
 
@@ -28,12 +39,11 @@ command = """/Applications/Utilities/Notifier.app/Contents/MacOS/Notifier \
   --message {title} \
   --sound default"""
 
-# yoloラベルがなければZellijの新タブでClaude Codeレビューを実行
-# 分析完了後にタブにフォーカスが移るため、起動直後はgo-to-previous-tabで元タブに戻す
+# yoloラベルがなければ新タブでClaude Codeレビューを実行。
+# タブの開き方（herdr / zellij）は open-review-tab が実行時に判定する。
 [[on_new_pr]]
 name = "review-tab"
-command = """echo '{labels}' | grep -q yolo || (zellij action new-tab --name 'Review: {repo}#{number}' --close-on-exit -- \
-  review-pr '{url}' '{number}' '{repo}' && zellij action go-to-previous-tab)"""
+command = """echo '{labels}' | grep -q yolo || open-review-tab '{url}' '{number}' '{repo}'"""
 
 # --- on_poll: 毎ポーリング ---
 
@@ -76,10 +86,10 @@ command = "gh pr review {number} -R {repo} --request-changes --body 'CI/変更�
 name = "Open CI checks (web)"
 command = "gh pr checks {number} -R {repo} --web"
 
-# review-pr は examples/scripts/ のヘルパー（PATH に置く前提）
+# open-review-tab は examples/scripts/ のヘルパー（PATH に置く前提）
 [[actions]]
 name = "Re-review with Claude (new tab)"
-command = "zellij action new-tab --name 'Review: {repo}#{number}' --close-on-exit -- review-pr '{url}' '{number}' '{repo}'"
+command = "open-review-tab '{url}' '{number}' '{repo}'"
 
 [[actions]]
 name = "Copy URL"
