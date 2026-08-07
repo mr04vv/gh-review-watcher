@@ -47,7 +47,16 @@ else
 fi
 
 # Step 1: claude -p でレビュー実行、結果を $REVIEW_RESULT に保存 (生データは後段の [c] でも使う)
-REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "/review ${URL}" 2>&1)
+# スラッシュコマンドは使わない: -p (print) モードは組み込みの /review を
+# "Unknown command" で弾く (Claude Code 2.1.223 で確認)。プロンプト直書きなら
+# コマンド登録の仕様変更に影響されない。
+REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "GitHub PR のコードレビューを実行してください。対象: ${URL}
+
+\`gh pr view\` でメタデータを、\`gh pr diff\` で差分を取得して読み、以下の観点で指摘を挙げてください: バグ・正確性 / セキュリティ / 設計 / パフォーマンス / テスト不足。
+
+- 指摘ごとに重要度 (Blocker / 要改善 / 提案) と該当ファイル・行を明記
+- 良い点も簡潔に
+- 最後に総合判定を 1 行で: APPROVE / REQUEST_CHANGES / DISCUSS のいずれか + 理由" 2>&1)
 
 # Step 2: $REVIEW_RESULT を固定テンプレートに再整形 (タブで一貫した5セクション構造で見るため)
 REFORMAT_PROMPT="以下は PR #${NUMBER} (${REPO}) に対するコードレビュー結果です。
