@@ -27,9 +27,7 @@ ln -sf "$PWD/close-merged-review-tab.sh" ~/.local/bin/close-merged-review-tab
 - [Zellij](https://zellij.dev/) — タブ操作 (`zellij action ...`)
 - [Claude Code](https://claude.com/claude-code) — `claude` CLI。`review-pr.sh` は
   組み込みスキル `/code-review`、`config.toml` の yolo-review hook は `/yolo-review`
-  を使う（`/yolo-review` は各自で用意する Claude Code skill / command）。
-  `code-review` という名前のカスタムコマンドを自作している場合は組み込みを
-  シャドウしてしまうので改名すること
+  を使う（`/yolo-review` は各自で用意する Claude Code skill / command）
 - `gh` (GitHub CLI), `jq`
 
 いずれも `{repo}` `{number}` `{url}` などの値は gh-review-watcher が hook 実行時に
