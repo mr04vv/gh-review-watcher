@@ -47,16 +47,14 @@ else
 fi
 
 # Step 1: claude -p でレビュー実行、結果を $REVIEW_RESULT に保存 (生データは後段の [c] でも使う)
-# スラッシュコマンドは使わない: -p (print) モードは組み込みの /review を
-# "Unknown command" で弾く (Claude Code 2.1.223 で確認)。プロンプト直書きなら
-# コマンド登録の仕様変更に影響されない。
-REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "GitHub PR のコードレビューを実行してください。対象: ${URL}
-
-\`gh pr view\` でメタデータを、\`gh pr diff\` で差分を取得して読み、以下の観点で指摘を挙げてください: バグ・正確性 / セキュリティ / 設計 / パフォーマンス / テスト不足。
-
-- 指摘ごとに重要度 (Blocker / 要改善 / 提案) と該当ファイル・行を明記
-- 良い点も簡潔に
-- 最後に総合判定を 1 行で: APPROVE / REQUEST_CHANGES / DISCUSS のいずれか + 理由" 2>&1)
+# /review ではなく正式名の /code-review を呼ぶ: Claude Code 2.1.223 で /review は
+# /code-review のエイリアスになり、ユーザー定義コマンドが code-review 名を占有して
+# いる環境では print モードでエイリアス解決が壊れ、"Unknown command: /review" の
+# 1行だけが $REVIEW_RESULT に入って後段の整形に流れてしまう (2.1.223 で実測)。
+# 正式名で呼べばこの衝突では壊れない。
+# || true: set -e 下で claude の非ゼロ終了がスクリプトごと殺し、--close-on-exit の
+# タブが無言で消えるのを防ぐ。空出力は後段の整形フォールバックが拾う。
+REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "/code-review ${URL}" 2>&1 || true)
 
 # Step 2: $REVIEW_RESULT を固定テンプレートに再整形 (タブで一貫した5セクション構造で見るため)
 REFORMAT_PROMPT="以下は PR #${NUMBER} (${REPO}) に対するコードレビュー結果です。
