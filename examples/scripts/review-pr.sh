@@ -47,7 +47,15 @@ else
 fi
 
 # Step 1: claude -p でレビュー実行、結果を $REVIEW_RESULT に保存 (生データは後段の [c] でも使う)
-REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "/code-review ${URL}" 2>&1 || true)
+REVIEW_RESULT=$(claude --dangerously-skip-permissions -p "/review ${URL}" 2>&1 || true)
+
+# "Unknown command: /review" (code-review 名のカスタムコマンドと衝突した環境) や
+# 認証切れ等の1行エラーをレビュー本文として下流に流さない
+if [ "${#REVIEW_RESULT}" -lt 80 ]; then
+  echo "⚠️  レビュー取得に失敗しました: ${REVIEW_RESULT:-（空）}"
+  read -r -p "Enter で閉じる" _
+  exit 1
+fi
 
 # Step 2: $REVIEW_RESULT を固定テンプレートに再整形 (タブで一貫した5セクション構造で見るため)
 REFORMAT_PROMPT="以下は PR #${NUMBER} (${REPO}) に対するコードレビュー結果です。
