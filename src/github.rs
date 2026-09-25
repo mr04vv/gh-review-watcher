@@ -114,6 +114,13 @@ fn search_prs(filter: &str) -> Result<Vec<RawPullRequest>, String> {
 
 pub fn fetch_review_requests() -> Result<Vec<PullRequest>, String> {
     let reviews = search_prs("--review-requested=@me")?;
+    // An empty review search (e.g. right after wake-from-sleep) is treated as a
+    // transient failure. Otherwise assignee-only results bypass the watcher's
+    // empty-response guard, every review PR fires on_remove, and all of them
+    // are re-detected as new on the next poll.
+    if reviews.is_empty() {
+        return Err("review-requested search returned no PRs".to_string());
+    }
     let assigned = search_prs("--assignee=@me")?;
 
     // Deduplicate: if a PR appears in both, keep it as Review (higher priority)
