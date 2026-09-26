@@ -112,7 +112,29 @@ fn search_prs(filter: &str) -> Result<Vec<RawPullRequest>, String> {
     serde_json::from_str(&stdout).map_err(|e| format!("Failed to parse JSON: {e}"))
 }
 
-pub fn fetch_review_requests() -> Result<Vec<PullRequest>, String> {
+fn ensure_access(
+    repos: &[String],
+    probe: impl Fn(&str) -> Result<(), String>,
+) -> Result<(), String> {
+    repos
+        .iter()
+        .try_for_each(|repo| probe(repo).map_err(|e| format!("cannot access {repo}: {e}")))
+}
+
+fn probe_repo(repo: &str) -> Result<(), String> {
+    let output = Command::new("gh")
+        .args(["api", &format!("repos/{repo}"), "--silent"])
+        .output()
+        .map_err(|e| format!("Failed to run gh: {e}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
+    }
+}
+
+pub fn fetch_review_requests(access_check_repos: &[String]) -> Result<Vec<PullRequest>, String> {
+    ensure_access(access_check_repos, probe_repo)?;
     let reviews = search_prs("--review-requested=@me")?;
     // An empty review search (e.g. right after wake-from-sleep) is treated as a
     // transient failure. Otherwise assignee-only results bypass the watcher's
@@ -159,4 +181,24 @@ pub fn fetch_review_requests() -> Result<Vec<PullRequest>, String> {
     }
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_access_fails_when_any_repo_is_unreachable() {
+        let repos = vec!["org/ok".to_string(), "org/blocked".to_string()];
+        let result = ensure_access(&repos, |r| {
+            if r == "org/blocked" { Err("HTTP 403".to_string()) } else { Ok(()) }
+        });
+        assert_eq!(result, Err("cannot access org/blocked: HTTP 403".to_string()));
+    }
+
+    #[test]
+    fn ensure_access_passes_when_all_repos_are_reachable() {
+        let repos = vec!["org/ok".to_string()];
+        assert_eq!(ensure_access(&repos, |_| Ok(())), Ok(()));
+    }
 }

@@ -34,7 +34,8 @@ pub fn spawn_watcher(
         let mut first_run = true;
 
         loop {
-            match tokio::task::spawn_blocking(github::fetch_review_requests).await {
+            let access_check_repos = config.access_check_repos.clone();
+            match tokio::task::spawn_blocking(move || github::fetch_review_requests(&access_check_repos)).await {
                 Ok(Ok(prs)) => {
                     if !first_run {
                         let current_ids: HashSet<(String, u64)> = prs

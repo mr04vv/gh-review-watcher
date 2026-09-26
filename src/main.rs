@@ -84,8 +84,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             // Manual refresh: spawn a one-off fetch
                             app.refreshing = true;
                             let tx2 = tx.clone();
+                            let access_check_repos = cfg.access_check_repos.clone();
                             tokio::task::spawn_blocking(move || {
-                                match github::fetch_review_requests() {
+                                match github::fetch_review_requests(&access_check_repos) {
                                     Ok(prs) => {
                                         let _ = tx2.send(WatcherEvent::Updated(prs));
                                     }

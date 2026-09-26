@@ -29,6 +29,12 @@ pub struct Config {
     /// (same `{repo}/{number}/{title}/{author}/{url}/{labels}` templating).
     #[serde(default)]
     pub actions: Vec<ActionCommand>,
+
+    /// Repos (`owner/name`) that must be reachable before each poll. If any is
+    /// not (e.g. blocked by an org IP allow list right after wake-from-sleep),
+    /// the poll is skipped, since search silently drops that org's PRs.
+    #[serde(default)]
+    pub access_check_repos: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -55,6 +61,7 @@ impl Default for Config {
             on_remove: Vec::new(),
             on_select: None,
             actions: Vec::new(),
+            access_check_repos: Vec::new(),
         }
     }
 }
@@ -115,5 +122,22 @@ pub fn load_config() -> Config {
     } else {
         log(&format!("Config not found at {}", path.display()));
         Config::default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn access_check_repos_defaults_to_empty() {
+        let config: Config = toml::from_str("").unwrap();
+        assert!(config.access_check_repos.is_empty());
+    }
+
+    #[test]
+    fn access_check_repos_is_parsed() {
+        let config: Config = toml::from_str(r#"access_check_repos = ["org/repo"]"#).unwrap();
+        assert_eq!(config.access_check_repos, vec!["org/repo".to_string()]);
     }
 }
